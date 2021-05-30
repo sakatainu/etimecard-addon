@@ -7,6 +7,7 @@
 // @updateURL    https://raw.githubusercontent.com/sakatainu/etimecard-addon/master/main.js
 // @downloadURL  https://raw.githubusercontent.com/sakatainu/etimecard-addon/master/main.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.9.8/dayjs.min.js
+// @match        https://e-timecard.ne.jp/s/EPSINP03/
 // @grant        none
 // ==/UserScript==
 
