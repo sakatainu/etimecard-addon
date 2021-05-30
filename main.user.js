@@ -4,8 +4,8 @@
 // @version      1.0.0
 // @description  try to take over the world!
 // @author       You
-// @updateURL    https://raw.githubusercontent.com/sakatainu/etimecard-addon/master/main.js
-// @downloadURL  https://raw.githubusercontent.com/sakatainu/etimecard-addon/master/main.js
+// @updateURL    https://github.com/sakatainu/etimecard-addon/raw/master/main.user.js
+// @downloadURL  https://github.com/sakatainu/etimecard-addon/raw/master/main.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.9.8/dayjs.min.js
 // @match        https://e-timecard.ne.jp/s/EPSINP03/*
 // @grant        none
