@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         E-timecard 勤務時間表示
 // @namespace    http://tampermonkey.net/
-// @version      1.0.0
+// @version      2.0.0
 // @description  try to take over the world!
 // @author       You
 // @updateURL    https://github.com/sakatainu/etimecard-addon/raw/master/main.user.js
@@ -11,50 +11,150 @@
 // @grant        none
 // ==/UserScript==
 
-
 (() => {
-  const table = document.querySelector("#mainarea > div > table:last-of-type");
+  /*
+   * ミリ秒 -> 分 = ミリ秒 / MS_MIN
+   * 分 -> ミリ秒 = ミリ秒 * MS_MIN
+   */
+  const MS_MIN = (60 /* minutes */ * 1000 /* ms */);
+  const zeroPadding = new Intl.NumberFormat('ja', { minimumIntegerDigits: 2 });
 
-  const header = document.createElement("th");
-  header.textContent = "拡_勤務合計";
-  header.classList.add("cmWidthP10");
+  /**
+   * 経過時間計算
+   * @param {string} startTimeText hh:MM形式
+   * @param {string} endTimeText hh:MM形式
+   * @returns 経過時間
+   */
+  const calcElapsed = (startTimeText, endTimeText) => {
+    const startDate = new Date(`1970-01-01 ${startTimeText.trim()}:00`);
+    const endDate = new Date(`1970-01-01 ${endTimeText.trim()}:00`);
 
-  const rowsHeader = table.querySelector("tr:nth-of-type(1) > th:nth-of-type(9)");
-  rowsHeader.parentNode.insertBefore(header, rowsHeader);
-
-  const rows = Array.from(table.querySelectorAll("tr:not(:nth-of-type(1))"));
-  rows.forEach(row => {
-    const td = document.createElement("td");
-
-    if (!row.querySelector("td:nth-of-type(5) > input")) {
-      // 休憩時間
-      const breakTime = Number(row.querySelector("td:nth-of-type(7)").textContent.trim());
-
-      // 開始時刻
-      const startDateText = row.querySelector("td:nth-of-type(5)").textContent.trim();
-      const startDate = new Date(`1970-01-01 ${startDateText}:00`);
-
-      // 終了時刻
-      const endDateText = row.querySelector("td:nth-of-type(6)").textContent.trim();
-      const endDate = new Date(`1970-01-01 ${endDateText}:00`);
-
-      if (!isNaN(startDate) && !isNaN(endDate)) {
-        // 勤務時間（分）
-        const workingTime = endDate - startDate;
-
-        const workingMinutes = (workingTime / (60 * 1000)) - breakTime;
-        const workingHours = Math.floor(workingMinutes / 60);
-        const workingMinute = workingMinutes % 60;
-
-        const zeroPadding = new Intl.NumberFormat('ja', { minimumIntegerDigits: 2 });
-        td.textContent = `${zeroPadding.format(workingHours)}:${zeroPadding.format(workingMinute)}`;
-      }
+    if (isNaN(startDate) || isNaN(endDate)) {
+      return null;
     }
 
-    const target = row.querySelector("td:nth-of-type(9)");
-    target.parentNode.insertBefore(td, target);
+    return endDate - startDate;
+  };
+
+  /**
+   * 時間計算
+   * @param {number} elapsedMillisecond 経過時間（ミリ秒）
+   * @returns 経過時間 {hour, minute}
+   */
+  const calcDate = elapsedMillisecond => {
+    const workingMinutes = (elapsedMillisecond / MS_MIN);
+    const workingHours = Math.floor(workingMinutes / 60);
+    const workingMinute = workingMinutes % 60;
+
+    return {
+      hour: workingHours,
+      minute: workingMinute
+    };
+  }
+
+  const mngRows = {
+    "start-Time": {
+      label: "開始時刻",
+      clazz: "hdr-start-Time",
+      index: 0
+    },
+    "end-time": {
+      label: "終了時刻",
+      clazz: "hdr-end-time",
+      index: 0
+    },
+    "break-time": {
+      label: "休憩時間(分)",
+      clazz: "hdr-break-time",
+      index: 0
+    },
+    "night-break-time": {
+      label: "深夜休憩(分)",
+      clazz: "hdr-night-break-time",
+      index: 0
+    },
+    "working-hours": {
+      label: "拡_勤務合計",
+      clazz: "hdr-working-hours",
+      index: 0
+    }
+  };
+
+  const startTimeLabel = "開始時刻";
+  const endTimeLabel = "終了時刻";
+  const WORK_TABLE_ID = "work-times";
+
+  // 勤怠テーブルに識別子がないので、勤怠テーブル検索しい識別子をつける
+  // ヘッダーも同様
+  const tables = Array.from(document.querySelectorAll("#mainarea table"));
+  const targetTable = tables.find(tbl => {
+    const ths = Array.from(tbl.querySelectorAll("th"));
+
+    return [startTimeLabel, endTimeLabel].every(txt => {
+      return ths.some(th => th.textContent === txt);
+    });
+  });
+
+  // 必要な識別子を付与
+  targetTable.setAttribute("id", WORK_TABLE_ID);
+  const titleThs = Array.from(targetTable.querySelectorAll("tr:first-of-type th"));
+  Object.keys(mngRows).forEach(key => {
+    const mangRow = mngRows[key];
+    const target = titleThs.find(th => th.textContent === mangRow.label);
+    if (!target) return;
+
+    target.classList.add(mangRow.clazz);
+    mangRow.index = target.cellIndex;
+  });
+
+  // ヘッダーに拡張列を追加
+  const header = document.createElement("th");
+  header.textContent = mngRows["working-hours"].label;
+  header.classList.add("cmWidthP10");
+  header.classList.add(mngRows["working-hours"].clazz);
+
+  const nightBreakTimeTh = targetTable.querySelector(`.${mngRows["night-break-time"].clazz}`);
+  nightBreakTimeTh.parentNode.insertBefore(header, nightBreakTimeTh.nextElementSibling);
+
+  const extWorkingHoursTh = targetTable.querySelector(`.${mngRows["working-hours"].clazz}`);
+  mngRows["working-hours"].index = extWorkingHoursTh.cellIndex;
+
+  // 拡張列生成関数
+  const createWorkingHoursRow = (startDateText, endDateText, breakTimeText) => {
+    const elapsedMS = calcElapsed(startDateText, endDateText);
+    const breakTimeH = Number(breakTimeText);
+
+    if (!elapsedMS || isNaN(breakTimeH)) {
+      return document.createElement("td");
+    }
+
+    const td = document.createElement("td");
+    const workTimeMS = elapsedMS - breakTimeH * MS_MIN;
+    const workingDate = calcDate(workTimeMS);
+    const hourText = zeroPadding.format(workingDate.hour);
+    const minuteText = zeroPadding.format(workingDate.minute);
+    td.textContent = `${hourText}:${minuteText}`;
+    return td;
+  };
+
+  // 拡張列を追加
+  const rows = Array.from(targetTable.querySelectorAll("tr:not(:nth-of-type(1))"));
+  rows.forEach(row => {
+    const startDateText = row.cells[mngRows["start-Time"].index].textContent.trim();
+    const endDateText = row.cells[mngRows["end-time"].index].textContent.trim();
+    const breakTimeText = row.cells[mngRows["break-time"].index].textContent.trim();
+
+    const newRow = createWorkingHoursRow(startDateText, endDateText, breakTimeText);
+
+    const target = row.cells[mngRows["night-break-time"].index];
+    target.parentNode.insertBefore(newRow, target.nextElementSibling);
   });
 })();
+
+/**
+ * [定時]ボタン拡張
+ *  - [自宅]チェックボックスをチェック
+ */
 (() => {
   window.setRegTime = (() => {
     const org = window.setRegTime;
