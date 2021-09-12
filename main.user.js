@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         E-timecard 勤務時間表示
 // @namespace    http://tampermonkey.net/
-// @version      2.0.0
+// @version      2.1.0
 // @description  try to take over the world!
 // @author       You
 // @updateURL    https://github.com/sakatainu/etimecard-addon/raw/master/main.user.js
