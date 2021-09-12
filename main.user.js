@@ -149,22 +149,21 @@
     const target = row.cells[mngRows["night-break-time"].index];
     target.parentNode.insertBefore(newRow, target.nextElementSibling);
   });
-})();
 
-/**
- * [定時]ボタン拡張
- *  - [自宅]チェックボックスをチェック
- */
-(() => {
+  /*
+   * [定時]ボタン拡張
+   *  - [自宅]チェックボックスをチェック
+   *  - [終了時刻]入力欄にカーソル
+   */
   window.setRegTime = (() => {
     const org = window.setRegTime;
     return n => {
       document.querySelector(`#workPlaceKbnHome${n}`).checked = true;
+      document.querySelector(`#endTimeInput${n}`).focus();
       return org(n);
     };
   })();
-})();
-(() => {
+
   window.onload = () => {
     const element = document.documentElement;
     const bottom = element.scrollHeight - element.clientHeight;
