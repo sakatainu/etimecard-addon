@@ -26,14 +26,14 @@
  * @returns 経過時間
  */
   const calcElapsed = (startTimeText, endTimeText) => {
-      const startDate = new Date(`1970-01-01 ${startTimeText.trim()}:00`);
-      const endDate = new Date(`1970-01-01 ${endTimeText.trim()}:00`);
+    const startDate = dayjs(`1970-01-01 ${startTimeText.trim()}:00`);
+    const endDate = dayjs(`1970-01-01 ${endTimeText.trim()}:00`);
 
-      if (isNaN(startDate) || isNaN(endDate)) {
-          return null;
-      }
+    if (!startDate.isValid() || !endDate.isValid()) {
+        return null;
+    }
 
-      return endDate - startDate;
+    return endDate.valueOf() - startDate.valueOf();
   };
 
   /**
